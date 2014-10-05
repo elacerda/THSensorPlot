@@ -11,8 +11,12 @@ try:
 except ImportError:
     print 'Could not import plotly python module.'
     sys.exit(2)
-    
-ser = serial.Serial('/dev/ttyACM0', 9600) # Establish the connection on a specific port
+
+try:
+    ser = serial.Serial(sys.argv[1], 9600) # Establish the connection on a specific port
+except IndexError:
+    print 'Usage: %s /dev/serial_device' % sys.argv[0]
+
 data_payload = "";
 
 layout = Layout(
@@ -23,13 +27,15 @@ layout = Layout(
     ),
 )
 
-trace1 = Scatter(x=[], y=[], name='temperature', stream=dict(token='wfmwcrsmbc', maxpoints=1440)) #, xaxis='x1')
-trace2 = Scatter(x=[], y=[], name='humidity', stream=dict(token='4j9mgy00ms', maxpoints=1440)) #, xaxis='x2')
+cr = py.get_credentials() # Get credentials from plotly configfile.
+
+trace1 = Scatter(x=[], y=[], name='temperature', stream=dict(token=cr['stream_ids'][0], maxpoints=1440)) #, xaxis='x1')
+trace2 = Scatter(x=[], y=[], name='humidity', stream=dict(token=cr['stream_ids'][1], maxpoints=1440)) #, xaxis='x2')
 fig = Figure(data=[trace1, trace2], layout=layout)
 
 py.plot(fig, filename='THSensor', fileopt='extend')
-s1 = py.Stream('wfmwcrsmbc')
-s2 = py.Stream('4j9mgy00ms')
+s1 = py.Stream(cr['stream_ids'][0])
+s2 = py.Stream(cr['stream_ids'][1])
 s1.open()
 s2.open()
 
