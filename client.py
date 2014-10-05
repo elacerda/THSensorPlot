@@ -27,7 +27,7 @@ trace1 = Scatter(x=[], y=[], name='temperature', stream=dict(token='wfmwcrsmbc',
 trace2 = Scatter(x=[], y=[], name='humidity', stream=dict(token='4j9mgy00ms', maxpoints=1440)) #, xaxis='x2')
 fig = Figure(data=[trace1, trace2], layout=layout)
 
-py.plot(fig, filename='THSensor')
+py.plot(fig, filename='THSensor', fileopt='extend')
 s1 = py.Stream('wfmwcrsmbc')
 s2 = py.Stream('4j9mgy00ms')
 s1.open()
