@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from time import sleep
 import serial
-ser = serial.Serial('/dev/ttyUSB0', 115200) # Establish the connection on a specific port
+ser = serial.Serial('/dev/ttyUSB0', 9600) # Establish the connection on a specific port
 counter = 32 # Below 32 everything in ASCII is gibberish
 data_payload = "";
 while True:
