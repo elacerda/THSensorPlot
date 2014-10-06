@@ -22,15 +22,20 @@ def connectSerial(port, baudrate = 9600):
         
 def connectDB(dbfile):
     createSQL = ''
+    
     if not os.path.isfile(dbfile):
         createSQL = '''
         CREATE TABLE THSensor(id INTEGER PRIMARY KEY, datetime TEXT, temperature REAL, humidity REAL)
         '''        
+    
     db = sqlite3.connect(dbfile)
     c = db.cursor()
+    
     if createSQL:
         c.execute(createSQL)
+    
     db.commit()
+    
     return db, c
 
 def storeDataDB(db, cursor, datetime, temperature, humidity):
