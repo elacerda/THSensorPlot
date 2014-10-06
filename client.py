@@ -75,6 +75,5 @@ while True:
        s1.write(dict(x=nowStr, y=T))
        s2.write(dict(x=nowStr, y=H))
        print "%s end" % data_payload
-       time.sleep(30)
    else:
        data_payload += rl
