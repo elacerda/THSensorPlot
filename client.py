@@ -30,6 +30,7 @@ def connectDB(dbfile):
     c = db.cursor()
     if createSQL:
         c.execute(createSQL)
+    db.commit()
     return db, c
 
 def storeDataDB(db, cursor, datetime, temperature, humidity):
