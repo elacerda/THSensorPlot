@@ -23,32 +23,32 @@ def connect_serial(port, baudrate=9600):
     return s
 
 
-def connectDB(dbfile):
-    createSQL = ''
+def connect_db(dbfile):
+    qry = ''
 
     if not os.path.isfile(dbfile):
-        createSQL = 'CREATE TABLE THSensor(id INTEGER PRIMARY KEY, '
-        createSQL += 'datetime TEXT, temperature REAL, humidity REAL)'
+        qry = 'CREATE TABLE THSensor(id INTEGER PRIMARY KEY, '
+        qry += 'datetime TEXT, temperature REAL, humidity REAL)'
 
-    db = sqlite3.connect(dbfile)
-    c = db.cursor()
+    conn = sqlite3.connect(dbfile)
+    c = conn.cursor()
 
-    if createSQL:
-        c.execute(createSQL)
+    if qry:
+        c.execute(qry)
 
-    db.commit()
+    conn.commit()
 
-    return db, c
+    return conn, c
 
 
-def storeDataDB(db, cursor, datetime, temperature, humidity):
-    SQL = 'INSERT INTO THSensor(datetime, temperature, humidity) VALUES(?,?,?)'
-    cursor.execute(SQL, (datetime, temperature, humidity))
-    db.commit()
+def store_data_db(conn, c, datetime, temperature, humidity):
+    qry = 'INSERT INTO THSensor(datetime, temperature, humidity) VALUES(?,?,?)'
+    c.execute(qry, (datetime, temperature, humidity))
+    conn.commit()
 
 
 ser = connect_serial(sys.argv[1], 9600)
-db, cursor = connectDB('THSensor.db')
+conn, c = connect_db('THSensor.conn')
 data_payload = ''
 
 layout = Layout(
@@ -84,7 +84,7 @@ while True:
         nowStr = now.strftime('%Y-%m-%d %H:%M:%S')
         T = np.float(data.group(2))
         H = np.float(data.group(1))
-        storeDataDB(db, cursor, nowStr, T, H)
+        store_data_db(conn, c, nowStr, T, H)
         print '[%s] Writing to plot.ly server...' % nowStr
         s1.write(dict(x=nowStr, y=T))
         s2.write(dict(x=nowStr, y=H))
