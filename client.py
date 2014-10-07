@@ -41,10 +41,8 @@ def connect_db(dbfile):
 
 def store_data_db(dbfile, data):
     now, T, H = data
-    print now, T, H
     conn, c = connect_db(dbfile)
     qry = 'INSERT INTO THSensor(datetime, temperature, humidity) VALUES(?,?,?)'
-    print qry
     c.execute(qry, (now, T, H))
     conn.commit()
     conn.close()
