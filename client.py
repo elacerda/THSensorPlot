@@ -36,19 +36,39 @@ def connect_db(dbfile):
     if qry:
         c.execute(qry)
 
-    conn.commit()
-
     return conn, c
 
 
-def store_data_db(conn, c, datetime, temperature, humidity):
+def store_data_db(dbfile, data):
+    now, T, H = data
+    print now, T, H
+    conn, c = connect_db(dbfile)
     qry = 'INSERT INTO THSensor(datetime, temperature, humidity) VALUES(?,?,?)'
-    c.execute(qry, (datetime, temperature, humidity))
+    print qry
+    c.execute(qry, (now, T, H))
     conn.commit()
+    conn.close()
+
+
+def parse_serial_data(data, data_fmt_re):
+    d = re.search(data_fmt_re, data)
+    T = np.float(d.group(2))
+    H = np.float(d.group(1))
+    now = datetime.datetime.now()
+    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+    return now_str, T, H
+
+
+def ploty_streams(s1, s2, data):
+    now, T, H = data
+    print '[%s] Writing to plot.ly server...' % now
+    s1.write(dict(x=now, y=T))
+    s2.write(dict(x=now, y=H))
+    print '%s end' % data_payload
 
 
 ser = connect_serial(sys.argv[1], 9600)
-conn, c = connect_db('THSensor.conn')
 data_payload = ''
 
 layout = Layout(
@@ -79,15 +99,8 @@ while True:
     if rl == ':':
         data_payload = ''
     elif rl == ';':
-        data = re.search('H([0-9]+)T([0-9]+)', data_payload)
-        now = datetime.datetime.now()
-        nowStr = now.strftime('%Y-%m-%d %H:%M:%S')
-        T = np.float(data.group(2))
-        H = np.float(data.group(1))
-        store_data_db(conn, c, nowStr, T, H)
-        print '[%s] Writing to plot.ly server...' % nowStr
-        s1.write(dict(x=nowStr, y=T))
-        s2.write(dict(x=nowStr, y=H))
-        print '%s end' % data_payload
+        data = parse_serial_data(data_payload, 'H([0-9]+)T([0-9]+)')
+        ploty_streams(s1, s2, data)
+        store_data_db('THSensor.db', data)
     else:
         data_payload += rl
