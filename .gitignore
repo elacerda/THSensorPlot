@@ -42,3 +42,7 @@ nosetests.xml
 
 # PyCharm
 .idea
+
+# TWISTD
+twistd.pid
+twistd.log
