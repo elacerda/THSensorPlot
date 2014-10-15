@@ -1,26 +1,28 @@
 import sys
 import datetime
-import serial
+import telnetlib
 import re
-import numpy as np
 import sqlite3
 import os
-try:
-    import plotly.plotly as py
-    from plotly.graph_objs import Scatter, Figure, YAxis, Layout
-except ImportError:
-    print 'Could not import plotly python module.'
-    sys.exit(2)
+
+import serial
+import numpy as np
+import plotly.plotly as py
+from plotly.graph_objs import Scatter, Figure, YAxis, Layout
 
 
 def connect_serial(port, baudrate=9600):
-    try:
-        # Establish the connection on a specific port
-        s = serial.Serial(port, baudrate)
-    except IndexError:
-        print 'Usage: %s /dev/serial_device' % sys.argv[0]
+    # Establish the connection on a specific port
+    return serial.Serial(port, baudrate)
 
-    return s
+
+class Telnet(telnetlib.Telnet):
+    def readline(self):
+        return self.read_until('\n').replace('\n', '')
+
+
+def connect_telnet(ip, port):
+    return Telnet(ip, port)
 
 
 def connect_db(dbfile):
@@ -63,42 +65,58 @@ def ploty_streams(s1, s2, data):
     print '[%s] Writing to plot.ly server...' % now
     s1.write(dict(x=now, y=T))
     s2.write(dict(x=now, y=H))
-    print '%s end' % data_payload
 
 
-ser = connect_serial(sys.argv[1], 9600)
-data_payload = ''
+def main():
+    try:
+        addr = sys.argv[1]
+    except IndexError:
+        print 'Usage: %s /dev/serial_device or ip:port' % sys.argv[0]
+        sys.exit(1)
 
-layout = Layout(
-    title='THSensor v0.1',
-    yaxis=YAxis(
-        title='Temperature (Celsius) / Humidity (%)',
-        range=[10, 50]
-    ),
-)
-
-# Get credentials from plotly configfile.
-cr = py.get_credentials()
-trace1 = Scatter(x=[], y=[], name='temperature',
-                 stream=dict(token=cr['stream_ids'][0], maxpoints=1440))
-trace2 = Scatter(x=[], y=[], name='humidity',
-                 stream=dict(token=cr['stream_ids'][1], maxpoints=1440))
-fig = Figure(data=[trace1, trace2], layout=layout)
-py.plot(fig, filename='THSensor', fileopt='extend')
-s1 = py.Stream(cr['stream_ids'][0])
-s2 = py.Stream(cr['stream_ids'][1])
-s1.open()
-s2.open()
-
-while True:
-    # Read the newest output from the Arduino
-    rl = ser.readline().strip()
-
-    if rl == ':':
-        data_payload = ''
-    elif rl == ';':
-        data = parse_serial_data(data_payload, 'H([0-9]+)T([0-9]+)')
-        ploty_streams(s1, s2, data)
-        store_data_db('THSensor.db', data)
+    if ':' in addr:
+        ip, port = addr.split(':')
+        ser = connect_telnet(ip, port)
     else:
-        data_payload += rl
+        ser = connect_serial(addr, 9600)
+
+    data_payload = ''
+
+    layout = Layout(
+        title='THSensor v0.1',
+        yaxis=YAxis(
+            title='Temperature (Celsius) / Humidity (%)',
+            range=[10, 50]
+        ),
+    )
+
+    # Get credentials from plotly configfile.
+    cr = py.get_credentials()
+    trace1 = Scatter(x=[], y=[], name='temperature',
+                     stream=dict(token=cr['stream_ids'][0], maxpoints=1440))
+    trace2 = Scatter(x=[], y=[], name='humidity',
+                     stream=dict(token=cr['stream_ids'][1], maxpoints=1440))
+    fig = Figure(data=[trace1, trace2], layout=layout)
+    py.plot(fig, filename='THSensor', fileopt='extend')
+    s1 = py.Stream(cr['stream_ids'][0])
+    s2 = py.Stream(cr['stream_ids'][1])
+    s1.open()
+    s2.open()
+
+    while True:
+        # Read the newest output from the Arduino
+        rl = ser.readline().strip()
+
+        if rl == ':':
+            data_payload = ''
+        elif rl == ';':
+            data = parse_serial_data(data_payload, 'H([0-9]+)T([0-9]+)')
+            ploty_streams(s1, s2, data)
+            store_data_db('THSensor.db', data)
+            print '%s end' % data_payload
+        else:
+            data_payload += rl
+
+
+if __name__ == '__main__':
+    sys.exit(main())
