@@ -1,3 +1,4 @@
+import socket
 import sys
 import datetime
 import telnetlib
@@ -52,12 +53,16 @@ def store_data_db(dbfile, data):
 
 def parse_serial_data(data, data_fmt_re):
     d = re.search(data_fmt_re, data)
-    T = np.float(d.group(2))
-    H = np.float(d.group(1))
-    now = datetime.datetime.now()
-    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
-    return now_str, T, H
+    if d:
+        T = np.float(d.group(2))
+        H = np.float(d.group(1))
+        now = datetime.datetime.now()
+        now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+        return now_str, T, H
+    else:
+        return None
 
 
 def ploty_streams(s1, s2, data):
@@ -105,17 +110,17 @@ def main():
 
     while True:
         # Read the newest output from the Arduino
-        rl = ser.readline().strip()
-
-        if rl == ':':
-            data_payload = ''
-        elif rl == ';':
-            data = parse_serial_data(data_payload, 'H([0-9]+)T([0-9]+)')
-            ploty_streams(s1, s2, data)
+        data_payload = ser.readline().strip()
+        data = parse_serial_data(data_payload, ':H([0-9]+)T([0-9]+);')
+        if data:
+            try:
+                ploty_streams(s1, s2, data)
+            except socket.error, e:
+                print 'Error contacting plotly server: %s' % e
             store_data_db('THSensor.db', data)
             print '%s end' % data_payload
         else:
-            data_payload += rl
+            print '%s error' % data_payload
 
 
 if __name__ == '__main__':
