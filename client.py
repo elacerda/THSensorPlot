@@ -60,7 +60,10 @@ def parse_serial_data(data, data_fmt_re):
         now = datetime.datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
-        return now_str, T, H
+        if 0 < T <= 100 and 0 < H <= 100:  # This avoids T = 255, H = 255 issues of DHT11.
+            return now_str, T, H
+        else:
+            return None
     else:
         return None
 
