@@ -55,8 +55,9 @@ def parse_serial_data(data, data_fmt_re):
     d = re.search(data_fmt_re, data)
 
     if d:
-        T = np.float(d.group(2))
-        H = np.float(d.group(1))
+        I = np.int('%s' % d.group(1))
+        H = np.float('%s.%s' % d.group(2, 3))
+        T = np.float('%s.%s' % d.group(4, 5))
         now = datetime.datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -94,16 +95,16 @@ def main():
         title='THSensor v0.1',
         yaxis=YAxis(
             title='Temperature (Celsius) / Humidity (%)',
-            range=[10, 50]
+            range=[10.1, 50.1]
         ),
     )
 
     # Get credentials from plotly configfile.
     cr = py.get_credentials()
     trace1 = Scatter(x=[], y=[], name='temperature',
-                     stream=dict(token=cr['stream_ids'][0], maxpoints=1440))
+                     stream=dict(token=cr['stream_ids'][0], maxpoints=600))
     trace2 = Scatter(x=[], y=[], name='humidity',
-                     stream=dict(token=cr['stream_ids'][1], maxpoints=1440))
+                     stream=dict(token=cr['stream_ids'][1], maxpoints=600))
     fig = Figure(data=[trace1, trace2], layout=layout)
     py.plot(fig, filename='THSensor', fileopt='extend')
     s1 = py.Stream(cr['stream_ids'][0])
@@ -114,7 +115,7 @@ def main():
     while True:
         # Read the newest output from the Arduino
         data_payload = ser.readline().strip()
-        data = parse_serial_data(data_payload, ':H([0-9]+)T([0-9]+);')
+        data = parse_serial_data(data_payload, ':I([0-9]+)H([0-9]+).([0-9]+)T([0-9]+).([0-9]+);')
         if data:
             try:
                 ploty_streams(s1, s2, data)
