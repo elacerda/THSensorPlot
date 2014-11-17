@@ -11,7 +11,6 @@ import numpy as np
 import plotly.plotly as py
 from plotly.graph_objs import Scatter, Figure, YAxis, Layout
 
-
 def connect_serial(port, baudrate=9600):
     # Establish the connection on a specific port
     return serial.Serial(port, baudrate)
@@ -55,9 +54,16 @@ def parse_serial_data(data, data_fmt_re):
     d = re.search(data_fmt_re, data)
 
     if d:
-        I = np.int('%s' % d.group(1))
-        H = np.float('%s.%s' % d.group(2, 3))
-        T = np.float('%s.%s' % d.group(4, 5))
+        Htuple = d.group(1,2)
+        Ttuple = d.group(3,4)
+        if Htuple[1] == None:
+            H = np.int('%s' % Htuple[0])
+        else:    
+            H = np.float('%s.%s' % Htuple)
+        if Ttuple[1] == None:
+            T = np.int('%s' % Ttuple[0])
+        else:
+            T = np.float('%s.%s' % Ttuple)
         now = datetime.datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -74,13 +80,13 @@ def ploty_streams(s1, s2, data):
     print '[%s] Writing to plot.ly server...' % now
     s1.write(dict(x=now, y=T))
     s2.write(dict(x=now, y=H))
-
-
+    
 def main():
     try:
         addr = sys.argv[1]
+        rid = sys.argv[2]
     except IndexError:
-        print 'Usage: %s /dev/serial_device or ip:port' % sys.argv[0]
+        print 'Usage: %s /dev/serial_device R_ID DHT_VER or ip:port R_ID DHT_VER' % sys.argv[0]
         sys.exit(1)
 
     if ':' in addr:
@@ -115,7 +121,8 @@ def main():
     while True:
         # Read the newest output from the Arduino
         data_payload = ser.readline().strip()
-        data = parse_serial_data(data_payload, ':I([0-9]+)H([0-9]+).([0-9]+)T([0-9]+).([0-9]+);')
+        #data = parse_serial_data(data_payload, ':I%sH([0-9]+).([0-9]+)T([0-9]+).([0-9]+);' % rid)
+        data = parse_serial_data(data_payload, ':I%sH([0-9]{1,3})\.?([0-9]{1,2})?T([0-9]{1,3})\.?([0-9]{1,2})?;' % rid)
         if data:
             try:
                 ploty_streams(s1, s2, data)

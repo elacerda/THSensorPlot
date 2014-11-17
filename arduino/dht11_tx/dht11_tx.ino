@@ -58,6 +58,18 @@ String doubleToString(double input,int decimalPlaces){
 	}
 }
 
+// Virtual Wire Transmit msgStr
+void VWTX(String VWMsgStr) {
+  VWMsgStr.toCharArray(VWMsgBuf, VW_MAX_MESSAGE_LEN);
+  uint8_t VWMsgBufLen = strlen(VWMsgBuf);
+  digitalWrite(13, true); // Flash a light to show transmitting
+  vw_send((uint8_t *)VWMsgBuf, strlen(VWMsgBuf));
+  vw_wait_tx(); // Wait until the whole message is gone
+  digitalWrite(13, false);
+  delay(1000);
+//  Sleepy::loseSomeTime(30000);
+}
+
 // setup() runs once after reset.
 void setup() {
   #ifdef DEBUG
@@ -88,20 +100,22 @@ void loop() {
 //    Serial.println(VWMsgStr);
 //  #endif
 
+  unsigned int decimalPlaces = 0;
   // Send DHT message.
   #if DHT_TYPE == 11
     Serial.println("Reading DHT11");
     int rc = DHT.read(DHT_PIN);
   #elif DHT_TYPE == 22
     Serial.println("Reading DHT22");
-  	int rc = DHT.read22(DHT_PIN);
+    int rc = DHT.read22(DHT_PIN);
+    decimalPlaces = 2;
   #endif
 
   switch (rc) {
     case DHTLIB_OK:
       VWMsgStr = ":I" + String(RADIO_ID);
-	  VWMsgStr += "H" + doubleToString(DHT.humidity,2);
-	  VWMsgStr += "T" + doubleToString(DHT.temperature,2);
+	  VWMsgStr += "H" + doubleToString(DHT.humidity,decimalPlaces);
+	  VWMsgStr += "T" + doubleToString(DHT.temperature,decimalPlaces);
       VWMsgStr += ";";
       break;
     case DHTLIB_ERROR_CHECKSUM:
@@ -123,17 +137,7 @@ void loop() {
   delay(30000);
 }
 
-// Virtual Wire Transmit msgStr
-void VWTX(String VWMsgStr) {
-  VWMsgStr.toCharArray(VWMsgBuf, VW_MAX_MESSAGE_LEN);
-  uint8_t VWMsgBufLen = strlen(VWMsgBuf);
-  digitalWrite(13, true); // Flash a light to show transmitting
-  vw_send((uint8_t *)VWMsgBuf, strlen(VWMsgBuf));
-  vw_wait_tx(); // Wait until the whole message is gone
-  digitalWrite(13, false);
-  delay(1000);
-//  Sleepy::loseSomeTime(30000);
-}
+
 
 /*
 // Returns double fahrenheit from double celsius.
