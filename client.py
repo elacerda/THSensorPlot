@@ -11,6 +11,18 @@ import numpy as np
 import plotly.plotly as py
 from plotly.graph_objs import Scatter, Figure, YAxis, Layout
 
+
+########### global variables (thats suck) ###########
+# TODO: build a argsparse function 
+max_points = 600
+sensor_title = 'THSensor v0.1'
+sensor_filename_plotly = 'THSensor'
+stream_ids = [ u'nht587aev1', u'o02ku0mboo' ]
+db_table_name = 'THSensor'
+db_filename = 'THSensor.db'
+y_range = [10.1, 50.1]
+
+
 def connect_serial(port, baudrate=9600):
     # Establish the connection on a specific port
     return serial.Serial(port, baudrate)
@@ -29,7 +41,7 @@ def connect_db(dbfile):
     qry = ''
 
     if not os.path.isfile(dbfile):
-        qry = 'CREATE TABLE THSensor(id INTEGER PRIMARY KEY, '
+        qry = 'CREATE TABLE %s(id INTEGER PRIMARY KEY, ' % db_table_name
         qry += 'datetime TEXT, temperature REAL, humidity REAL)'
 
     conn = sqlite3.connect(dbfile)
@@ -44,7 +56,7 @@ def connect_db(dbfile):
 def store_data_db(dbfile, data):
     now, T, H = data
     conn, c = connect_db(dbfile)
-    qry = 'INSERT INTO THSensor(datetime, temperature, humidity) VALUES(?,?,?)'
+    qry = 'INSERT INTO %s(datetime, temperature, humidity) VALUES(?,?,?)' % db_table_name
     c.execute(qry, (now, T, H))
     conn.commit()
     conn.close()
@@ -67,7 +79,7 @@ def parse_serial_data(data, data_fmt_re):
         now = datetime.datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
 
-        if 0 < T <= 100 and 0 < H <= 100:  # This avoids T = 255, H = 255 issues of DHT11.
+        if T <= 100 and 0 < H <= 100:  # This avoids T = 255, H = 255 issues of DHT11.
             return now_str, T, H
         else:
             return None
@@ -80,6 +92,16 @@ def ploty_streams(s1, s2, data):
     print '[%s] Writing to plot.ly server...' % now
     s1.write(dict(x=now, y=T))
     s2.write(dict(x=now, y=H))
+    
+    
+def draw_stored_data(s1, s2, dbfile):
+    conn, c = connect_db(dbfile)
+    qry = 'SELECT datetime, temperature, humidity from %s ORDER BY id DESC limit %d' % (db_table_name, max_points)
+    c.execute(qry)
+    for row in c.fetchall():
+        ploty_streams(s1, s2, row)
+    conn.close()
+    
     
 def main():
     try:
@@ -98,26 +120,28 @@ def main():
     data_payload = ''
 
     layout = Layout(
-        title='THSensor v0.1',
+        title=sensor_title, 
         yaxis=YAxis(
             title='Temperature (Celsius) / Humidity (%)',
-            range=[10.1, 50.1]
+            range=y_range
         ),
     )
 
     # Get credentials from plotly configfile.
     cr = py.get_credentials()
     trace1 = Scatter(x=[], y=[], name='temperature',
-                     stream=dict(token=cr['stream_ids'][0], maxpoints=600))
+                     stream=dict(token=stream_ids[0], maxpoints=max_points))
     trace2 = Scatter(x=[], y=[], name='humidity',
-                     stream=dict(token=cr['stream_ids'][1], maxpoints=600))
+                     stream=dict(token=stream_ids[1], maxpoints=max_points))
     fig = Figure(data=[trace1, trace2], layout=layout)
-    py.plot(fig, filename='THSensor', fileopt='extend')
-    s1 = py.Stream(cr['stream_ids'][0])
-    s2 = py.Stream(cr['stream_ids'][1])
+    py.plot(fig, filename=sensor_filename_plotly, fileopt='extend')
+    s1 = py.Stream(stream_ids[0])
+    s2 = py.Stream(stream_ids[1])
     s1.open()
     s2.open()
 
+    draw_stored_data(s1, s2, db_filename)
+    
     while True:
         # Read the newest output from the Arduino
         data_payload = ser.readline().strip()
@@ -128,7 +152,7 @@ def main():
                 ploty_streams(s1, s2, data)
             except socket.error, e:
                 print 'Error contacting plotly server: %s' % e
-            store_data_db('THSensor.db', data)
+            store_data_db(db_filename, data)
             print '%s end' % data_payload
         else:
             print '%s error' % data_payload
