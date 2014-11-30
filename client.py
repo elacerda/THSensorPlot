@@ -98,7 +98,7 @@ def draw_stored_data(s1, s2, dbfile):
     conn, c = connect_db(dbfile)
     qry = 'SELECT datetime, temperature, humidity from %s ORDER BY id DESC limit %d' % (db_table_name, max_points)
     c.execute(qry)
-    for row in c.fetchall():
+    for row in c.fetchall()[::-1]:
         ploty_streams(s1, s2, row)
     conn.close()
     
